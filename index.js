@@ -23,7 +23,7 @@ module.exports = function (publicKey, secretKey) {
       , opts =
         { url: 'https://www.google.com/recaptcha/api/siteverify'
         , method: 'post'
-        , json: data
+        , form: data
         }
 
     if (req.ip) data.remoteip = req.ip
@@ -31,9 +31,18 @@ module.exports = function (publicKey, secretKey) {
     request(opts, function (error, res) {
       if (error) return next(error)
       if (!res.body) return next(new Error('Missing body response from recaptcha'))
-      if (res.body.success) return next()
 
-      var errors = res.body['error-codes']
+      var body
+
+      try {
+        body = JSON.parse(res.body)
+      } catch (e) {
+        return next(e)
+      }
+
+      if (body.success) return next()
+
+      var errors = body['error-codes']
 
       if (!errors || errors.length === 0) return next(new Error('Recaptcha not successful but no error codes provided'))
 

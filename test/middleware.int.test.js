@@ -29,7 +29,7 @@ describe('Recaptcha Middleware', function () {
   it('should use g-recaptcha-response body field', function (done) {
     nock(recaptchaDomain)
       .filteringRequestBody(function (body) {
-        assert.deepEqual(JSON.parse(body), { secret: 'a', response: 'hello' })
+        assert.deepEqual(body, 'secret=a&response=hello')
 
         done()
       })
@@ -42,7 +42,7 @@ describe('Recaptcha Middleware', function () {
   it('should use g-recaptcha-response query field', function (done) {
     nock(recaptchaDomain)
       .filteringRequestBody(function (body) {
-        assert.deepEqual(JSON.parse(body), { secret: 'a', response: 'hello' })
+        assert.deepEqual(body, 'secret=a&response=hello')
 
         done()
       })
@@ -55,7 +55,7 @@ describe('Recaptcha Middleware', function () {
   it('should attach ip', function (done) {
     nock(recaptchaDomain)
       .filteringRequestBody(function (body) {
-        assert.deepEqual(JSON.parse(body), { remoteip: 'a', secret: 'a', response: 'hello' })
+        assert.deepEqual(body, 'secret=a&response=hello&remoteip=a')
 
         done()
       })
@@ -84,6 +84,18 @@ describe('Recaptcha Middleware', function () {
 
     middleware('a', 'a')({ ip: 'a', body: { 'g-recaptcha-response': 'hello' } }, null, function (error) {
       assert.equal(error.message, 'I broke')
+
+      done()
+    })
+  })
+
+  it('should error on invalid JSON response', function (done) {
+    nock(recaptchaDomain)
+      .post(recaptchaRoute)
+      .reply(200, '{asdasd')
+
+    middleware('a', 'a')({ ip: 'a', query: { 'g-recaptcha-response': 'hello' } }, null, function (error) {
+      assert.equal(error.message, 'Unexpected token a')
 
       done()
     })
