@@ -1,8 +1,25 @@
 var request = require('request')
+var defaultOptions =
+  { errors:
+    { validation: function () { return new Error('Missing g-recaptcha-response field') }
+    , missingBody: function () { return new Error('Missing body response from recaptcha') }
+    , missingError: function () { return new Error('Recaptcha not successful but no error codes provided') }
+    , recaptchaErrorHandler: function (errors) {
+        return new Error(errors.join(', '))
+      }
+    }
+  }
 
-module.exports = function (publicKey, secretKey) {
-  if (!publicKey) throw new Error('Missing public recaptcha key')
-  if (!secretKey) throw new Error('Missing secret recaptcha key')
+module.exports = function (options) {
+  if (!options.secretKey) throw new Error('Missing secret recaptcha key')
+
+  if (options.errors) {
+    Object.keys(defaultOptions.errors).forEach(function (errorName) {
+      options.errors[errorName] = options.errors[errorName] || defaultOptions.errors[errorName]
+    })
+  } else {
+    options.errors = defaultOptions.errors
+  }
 
   function recaptchaVerify(req, res, next) {
       var response
@@ -14,10 +31,10 @@ module.exports = function (publicKey, secretKey) {
       response = req.query['g-recaptcha-response']
     }
 
-    if (!response) return next(new Error('Missing g-recaptcha-response field'))
+    if (!response) return next(options.errors.validation())
 
     var data =
-        { secret: secretKey
+        { secret: options.secretKey
         , response: response
         }
       , opts =
@@ -30,7 +47,7 @@ module.exports = function (publicKey, secretKey) {
 
     request(opts, function (error, res) {
       if (error) return next(error)
-      if (!res.body) return next(new Error('Missing body response from recaptcha'))
+      if (!res.body) return next(options.errors.missingBody())
 
       var body
 
@@ -44,9 +61,9 @@ module.exports = function (publicKey, secretKey) {
 
       var errors = body['error-codes']
 
-      if (!errors || errors.length === 0) return next(new Error('Recaptcha not successful but no error codes provided'))
+      if (!errors || errors.length === 0) return next(options.errors.missingError())
 
-      next(new Error(errors.join(', ')))
+      next(options.errors.recaptchaErrorHandler(errors))
     })
   }
 

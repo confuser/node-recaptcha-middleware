@@ -12,7 +12,7 @@ npm install recaptcha-middleware --save
 ```js
 
 var app = require('express')()
-  , middleware = require('recaptcha-middleware')('publicKey', 'secretKey')
+  , middleware = require('recaptcha-middleware')({ secretKey: 'secretKey' })
 
 app.get('/hello', middleware, function (req, res, next) {
   next()
@@ -25,3 +25,19 @@ app.post('/hello', middleware, function (req, res, next) {
 ```
 
 Requires either a body field `g-recaptcha-response` or query string parameter of the same name to support multiple HTTP verbs
+
+## Override error messages
+```js
+var opts =
+  { secretKey: 'secretKey'
+  , errors:
+    { validation: function () { return new Error('Missing g-recaptcha-response field') }
+    , missingBody: function () { return new Error('Missing body response from recaptcha') }
+    , missingError: function () { return new Error('Recaptcha not successful but no error codes provided') }
+    , recaptchaErrorHandler: function (errors) {
+        return new Error(errors.join(', '))
+      }
+    }
+  }
+  , middleware = require('recaptcha-middleware')(opts)
+```
